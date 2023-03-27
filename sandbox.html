@@ -1,0 +1,731 @@
+<!docparticle html>
+<html>
+    <head>
+        <title>sandbox</title>
+    </head>
+    <body>
+        <style>
+        .d{color:#c45800;}
+        </style>
+        <!--<style>
+        #c{transition:1s;}
+        #c:hover{transform: rotateZ(180deg);
+        }</style>-->
+        <canvas width="512" height="512" id="c"></canvas><br>
+        <button onclick="particle=0;">air</button>
+        <button onclick="particle=1;">sand</button>
+        <button onclick="particle=2;">brick</button>
+        <button onclick="particle=3;">wata</button>
+        <button onclick="particle=4;">tnt</button>
+        <button onclick="particle=5;">fire</button>
+        <button onclick="particle=6;">wood</button>
+        <br>
+        <button onclick="particle=7;">wire</button>
+        <button onclick="particle=9;">electricity</button>
+        <button onclick="particle=14;">phc</button>
+        <button onclick="particle=17;">nhc</button>
+        <button onclick="particle=20;">switch</button>
+        <button onclick="particle=26;">button</button>
+        <br>
+        <button onclick="particle=11;">conveyor belt left</button>
+        <button onclick="particle=10;">conveyor belt right</button>
+        <br>
+        <button onclick="particle=12;">player</button>
+        
+        <br>
+        <button onclick="map=createmap();">clear</button>
+        <br>
+        <button onclick="save()">save</button>
+        <button onclick="load()">load</button>
+        <textarea id="a"></textarea>
+        <br><br>
+        <button onclick="particle=13;">ai</button>
+        <button onclick="ai_list=[];ai_list_cords=[]">reset ai</button>
+        <button onclick="particle=28;">food</button>
+        <button onclick="particle=29;">mutagen</button>
+        <!--<button onclick="particle=30;">mutagen food</button>-->
+        <script>
+            
+
+
+
+
+
+
+
+
+            //basic stuff
+
+            len_particles=27
+            electricity_powered=[9,16,19]
+            nhc_electricity_powered=[9,19]
+            wire_electricity_powered=[23,9,16,19,27]
+            mousehold=0;
+            particle=1;
+            key=new Set();
+            const canvas=document.getElementById('c');
+            const ctx=canvas.getContext('2d');
+            const w=512
+            const h=512
+            const hm=64
+            const bs=w/hm
+
+
+
+
+
+
+            //ai stuff
+            const AI_input_layer_size=2+25*4//*len_particles
+            const AI_nodes_count=10
+
+            const test_ai_input=new Array(AI_input_layer_size).fill(0)
+
+            function ai(input_layer,connections,nodes_count=AI_nodes_count){
+                let nodes=[...input_layer,...new Array(nodes_count).fill(0)]
+                //connections[i][0]-negatives -||-[i][1]-positives
+                for(let i=0;i<connections.length;i++){
+                    nodes[connections[i][2]]=connections[i][1].some(x=>nodes[x])&&connections[i][0].some(x=>!nodes[x])
+                    
+                }
+                return nodes
+            }
+
+
+
+            function mutate(connections,nodes_count=AI_nodes_count,input_layer_size=AI_input_layer_size){
+
+                let existing_connections=connections.map(element => element[2]);
+                let possible_connections_min=input_layer_size
+                let possible_connections_max=nodes_count+input_layer_size
+
+                let selected_node_to_change=Math.floor(Math.random()*(possible_connections_max-possible_connections_min))+possible_connections_min
+                let node_idx = existing_connections.indexOf(selected_node_to_change)
+                if(node_idx+1){
+                    if(Math.random()>0.4){//add
+                        let selected_node_to_add=Math.floor(Math.random()*(selected_node_to_change))
+                        connections[node_idx][Math.floor(Math.random()*2)].push(selected_node_to_add)
+                    }else{//delete
+                        connections[node_idx][Math.floor(Math.random()*2)].pop()
+                    }
+                }else{
+                let selected_node_to_add=Math.floor(Math.random()*(selected_node_to_change))
+                connections.push([[],[],selected_node_to_change])
+                connections[connections.length-1][Math.floor(Math.random()*2)].push(selected_node_to_add)
+                }
+            }
+            /*
+            test_ai=[
+                [[18],[17],25],//right
+                [[16],[17],26],//left
+                [[17],[12],27],//down
+                [[],[],28],//up
+            ]//rldu //ulrd 7 11 13 17
+            */
+            
+            ai_list=[]
+            ai_list_cords=[]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            function createmap(){
+            let map=[]
+            let t=[]
+                for (let j = 0; j < hm; j++) {
+                    t.push(2)
+                }
+                map.push(t)
+            for(let i=1;i<hm-1;i++){
+                let t=[]
+                for (let j = 0; j < hm; j++) {
+                    if(j==0||j==hm-1){
+                    t.push(2)
+                }else{
+                    t.push(0)
+                }
+                }
+                map.push(t)
+            }
+            t=[]
+                for (let j = 0; j < hm; j++) {
+                    t.push(2)
+                }
+                map.push(t)
+            return map
+        }
+        map=createmap()
+            function draw(){
+                ctx.clearRect(0,0,w,h);
+                for (let x = 0; x < hm; x++) {
+                    for (let y = 0; y < hm; y++) {
+                        switch(map[x][y]){
+                            case 0:ctx.fillStyle = "#000000";break;
+                            case 1:ctx.fillStyle = "#efff00";break;
+                            case 2:ctx.fillStyle = "#FF1111";break;
+                            case 3:ctx.fillStyle = "#00FFFF";break;
+                            case 4:ctx.fillStyle = "#F000F0";break;
+                            case 5:ctx.fillStyle = "#F0A000";break;
+                            case 6:ctx.fillStyle = "#AAAA00";break;
+                            //wire
+                            case 7:ctx.fillStyle = "#0000FF";break;
+                            case 8:ctx.fillStyle = "#9999FF";break;
+                            case 9:ctx.fillStyle = "#FFFFFF";break;
+                            case 10:ctx.fillStyle = "#AAFFAA";break;
+                            case 11:ctx.fillStyle = "#339933";break;
+                            case 12:ctx.fillStyle = "#FFFFFF";break;
+                            case 13:ctx.fillStyle = "#00FF00";break;
+                            //phc,nhc
+                            case 14:ctx.fillStyle = "#0000AA";break;
+                            case 15:ctx.fillStyle = "#AAAAFF";break;
+                            case 16:ctx.fillStyle = "#FFFFFF";break;
+                            case 17:ctx.fillStyle = "#AA0000";break;
+                            case 18:ctx.fillStyle = "#FFAAAA";break;
+                            case 19:ctx.fillStyle = "#FFFFFF";break;
+                            //switch
+                                //off
+                            case 20:ctx.fillStyle = "#00FF00";break;
+                                //unpowered (on)
+                            case 21:ctx.fillStyle = "#55FF55";break;
+                                //descending
+                            case 22:ctx.fillStyle = "#FFFFFF";break;
+                                //powered
+                            case 23:ctx.fillStyle = "#FFFFFF";break;
+                                //switching on
+                            case 24:ctx.fillStyle = "#FFFFFF";break;
+                                //switching off
+                            case 25:ctx.fillStyle = "#FFFFFF";break;
+                            case 26:ctx.fillStyle = "#AAAA00";break;
+                            case 27:ctx.fillStyle = "#FFFF00";break;
+                            case 28:ctx.fillStyle = "#c45800";break;
+                            case 29:ctx.fillStyle = "#005500";break;
+                            case 30:ctx.fillStyle = "#AAFF00";break;
+                        }
+                        ctx.fillRect(x*bs,y*bs,bs,bs)
+                        //console.log(x,y,map[x][y])
+                    }
+                }
+            }
+            function md(event){
+                mousex=Math.floor(event.layerX/bs)-1
+                mousey=Math.floor(event.layerY/bs)-1
+                map[mousex][mousey]=particle;
+                mousehold=1;
+                //console.log(event)
+                draw()
+            }
+            function mu(event){
+                mousehold=0;
+            }
+            function mm(event){
+                mousex=Math.floor(event.layerX/bs)-1
+                mousey=Math.floor(event.layerY/bs)-1
+                if(mousehold)map[mousex][mousey]=particle;
+            }
+            canvas.addEventListener('mousedown',md)
+            canvas.addEventListener('mousemove',mm)
+            canvas.addEventListener('mouseup',mu)
+
+            function kd(event){
+                key.add(event.key);
+                //console.log(key)
+            }
+            function ku(event){
+                key.delete(event.key)
+            }
+            document.body.addEventListener('keydown',kd)
+            document.body.addEventListener('keyup',ku)
+
+
+
+            cp=[]
+            function tick(){
+                if(mousehold){
+                map[mousex][mousey]=particle;
+            }
+                cp=createmap()
+                for (let x = 0; x < hm; x++) {
+                    for (let y = 0; y < hm; y++) {
+                        cp[x][y]=map[x][y]
+                    }
+                }
+
+
+                for (let x = 0; x < hm; x++) {
+                    for (let y = 0; y < hm; y++) {
+                        //particles
+                        try{
+
+                        //sand particle
+                        if(map[x][y]==1){
+                            if(cp[x][y+1]==0){
+                                cp[x][y]=0
+                                cp[x][y+1]=1
+                            }else if(cp[x+1][y+1]==0){
+                                cp[x][y]=0
+                                cp[x+1][y+1]=1
+                            }else if(cp[x-1][y+1]==0){
+                                cp[x][y]=0
+                                cp[x-1][y+1]=1
+                            }
+                        }
+                        if(map[x][y]==3){
+                            if(cp[x][y+1]==0){
+                                cp[x][y]=0
+                                cp[x][y+1]=3
+                            }else if(cp[x+1][y]==0){
+                                cp[x][y]=0
+                                cp[x+1][y]=3
+                            }else if(cp[x-1][y]==0){
+                                cp[x][y]=0
+                                cp[x-1][y]=3
+                            }
+                        }
+                        if(map[x][y]==5){
+                            if(cp[x][y-1]==6){
+                                cp[x][y-1]=5
+                            }
+                            if(cp[x+1][y]==6){
+                                cp[x+1][y]=5
+                            }
+                            if(cp[x-1][y]==6){
+                                cp[x-1][y]=5
+                            }
+
+
+
+
+                            if(cp[x][y-1]==0){
+                                if(map[x][y-1]==5&&cp[x+1][y+1]==0){
+                                    cp[x][y]=0
+                                    cp[x+1][y+1]=5
+                                }else if(map[x+1][y-1]==5&&cp[x-1][y+1]==0){
+                                    cp[x][y]=0
+                                    cp[x-1][y+1]=5
+                                }else{
+                                cp[x][y]=0
+                                cp[x][y-1]=5
+                            }
+                            }else if(cp[x+1][y-1]==0){
+                                cp[x][y]=0
+                                cp[x+1][y-1]=5
+                            }else if(cp[x-1][y-1]==0){
+                                cp[x][y]=0
+                                cp[x-1][y-1]=5
+                            }else{
+                                cp[x][y]=0
+                            }
+                        }
+                        if(map[x][y]==4){
+                            if(
+                                (cp[x+1][y]==5||cp[x-1][y]==5||cp[x][y-1]==5||cp[x][y+1]==5)||
+                                (map[x+1][y]==9||map[x-1][y]==9||map[x][y+1]==9||map[x][y-1]==9)
+                            ){
+                                cp[x][y]=0
+                                for(let _=-3;_<3;_++){
+                                    for(let __=-3;__<3;__++){
+                                        cp[x+_][y+__]=5
+                                    }
+                                }
+                                
+                            }
+                        }
+                        //electricity particle
+
+                        //wire particle
+                        if(map[x][y]==9){
+                            cp[x][y]=8
+                        }
+                        if(map[x][y]==8){
+                            cp[x][y]=7
+                        }
+                        if(map[x][y]==7){
+                            if(wire_electricity_powered.indexOf(map[x+1][y])+1||wire_electricity_powered.indexOf(map[x-1][y])+1||wire_electricity_powered.indexOf(map[x][y+1])+1||wire_electricity_powered.indexOf(map[x][y-1])+1){
+                                cp[x][y]=9
+                            }
+                        }
+                        
+                        //phc particle
+                        if(map[x][y]==16){
+                            cp[x][y]=15
+                        }
+                        if(map[x][y]==15){
+                            cp[x][y]=14
+                        }
+                        if(map[x][y]==14){
+                            if(electricity_powered.indexOf(map[x+1][y])+1||electricity_powered.indexOf(map[x-1][y])+1||electricity_powered.indexOf(map[x][y+1])+1||electricity_powered.indexOf(map[x][y-1])+1){
+                                cp[x][y]=16
+                            }
+                        }
+
+                        //nhc particle
+                        if(map[x][y]==19){
+                            cp[x][y]=18
+                        }
+                        if(map[x][y]==18){
+                            cp[x][y]=17
+                        }
+                        if(map[x][y]==17){
+                            if(nhc_electricity_powered.indexOf(map[x+1][y])+1||nhc_electricity_powered.indexOf(map[x-1][y])+1||nhc_electricity_powered.indexOf(map[x][y+1])+1||nhc_electricity_powered.indexOf(map[x][y-1])+1){
+                                cp[x][y]=19
+                            }
+                        }
+                        //switch
+                        if(map[x][y]==23){
+                            cp[x][y]=22
+                        }
+                        if(map[x][y]==22){
+                            cp[x][y]=21
+                        }
+                        if(map[x][y]==21){
+                            if(map[x+1][y]==9||map[x-1][y]==9||map[x][y+1]==9||map[x][y-1]==9){//see powered wire=> turn into powered switch
+                                cp[x][y]=23
+                            }
+                            //if(map[x+1][y]==20||map[x-1][y]==20||map[x][y+1]==20||map[x][y-1]==20){//see off=>turn into turning off
+                            //    cp[x][y]=25
+                            //}
+                            if(map[x+1][y]==16||map[x-1][y]==16||map[x][y+1]==16||map[x][y-1]==16){//see powered nhc=>turn into turning off
+                                cp[x][y]=25
+                            }
+                            
+                        }
+                        if(map[x][y]==25){//switching off=>off
+                            cp[x][y]=20
+                        }
+
+
+
+                        if(map[x][y]==20){
+                            if(map[x+1][y]==19||map[x-1][y]==19||map[x][y+1]==19||map[x][y-1]==19){
+                                cp[x][y]=24
+                            }
+                            //if(map[x+1][y]==21||map[x-1][y]==21||map[x][y+1]==21||map[x][y-1]==21){
+                            //    cp[x][y]=24
+                            //}
+
+                        }
+                        if(map[x][y]==24){//switching on=> on
+                            cp[x][y]=21
+                            
+                        }
+                        
+
+                        //button particle
+                        if(map[x][y]==26){
+                            if(map[x][y+1]==map[x][y-1]){
+                            cp[x][y]=27
+                        }
+                            
+                        }
+                        if(map[x][y]==27){
+                            if(map[x][y+1]!=map[x][y-1]){
+                            cp[x][y]=26
+                        }
+                            
+                        }
+
+
+
+
+
+
+
+                        if(map[x][y]==10){
+                            //if(map[x+1][y]==9||map[x-1][y]==9||map[x][y+1]==9||map[x][y-1]==9){
+                            if(cp[x+1][y-1]==0&&map[x][y-1]!=0){
+                                cp[x+1][y-1]=cp[x][y-1]
+                                cp[x][y-1]=0
+                            }
+                            //}
+                        }if(map[x][y]==11){
+                            //if(map[x+1][y]==9||map[x-1][y]==9||map[x][y+1]==9||map[x][y-1]==9){
+                            if(cp[x-1][y-1]==0&&map[x][y-1]!=0){
+                                cp[x-1][y-1]=cp[x][y-1]
+                                cp[x][y-1]=0
+                            }
+                            //}
+                        }
+
+                        //player particle
+                        if(map[x][y]==12){
+                            let movedy=0
+                            let movedx=0
+                            if(cp[x][y+1]==0){
+                                cp[x][y]=0
+                                cp[x][y+1]=12
+                                movedy=1
+                            }
+                            if(key.has('a')&&cp[x-1][y+movedy]==0){
+                                cp[x][y+movedy]=0
+                                cp[x-1][y+movedy]=12
+                                movedx-=1
+                            }if(key.has('d')&&cp[x+movedx+1][y+movedy]==0){
+                                cp[x+movedx][y+movedy]=0
+                                cp[x+1+movedx][y+movedy]=12
+                                movedx+=1
+
+                            }if(key.has('w')&&cp[x+movedx][y+movedy-1]==0&&cp[x+movedx][y+movedy-2]==0&&cp[x+movedx][y+movedy+1]!=0){//&&cp[x+movedx][y+movedy-1]==0&&cp[x+movedx][y+movedy-2]==0
+                                cp[x+movedx][y+movedy]=0
+                                cp[x+movedx][y+movedy-2]=12
+                            }
+                            
+                            
+                        }
+
+
+
+                        //ai particle
+                        if(map[x][y]==13){
+                            let ai_index=ai_list_cords.indexOf(x+'/'+y)
+                            if(!(ai_index+1)){
+                                ai_list.push([])
+                                mutate(ai_list[ai_list.length-1])
+                                ai_list_cords.push(x+'/'+y)
+                                console.log(ai_list[ai_list.length-1])
+                                continue
+                            }
+                            //food handling
+                            if(cp[x+1][y]==28){
+                                cp[x+1][y]=13
+                                ai_list.push(structuredClone(ai_list[ai_index]))
+                                ai_list_cords.push((x+1)+'/'+y)
+                                mutate(ai_list[ai_list.length-1])
+                                
+                            }else if(cp[x-1][y]==28){
+                                cp[x-1][y]=13
+                                ai_list.push(structuredClone(ai_list[ai_index]))
+                                ai_list_cords.push((x-1)+'/'+y)
+                                mutate(ai_list[ai_list.length-1])
+                            }else if(cp[x][y+1]==28){
+                                cp[x][y+1]=13
+                                ai_list.push(structuredClone(ai_list[ai_index]))
+                                ai_list_cords.push((x)+'/'+(y+1))
+                                mutate(ai_list[ai_list.length-1])
+                            }else if(cp[x][y-1]==28){
+                                cp[x][y-1]=13
+                                ai_list.push(structuredClone(ai_list[ai_index]))
+                                ai_list_cords.push((x)+'/'+(y-1))
+                                mutate(ai_list[ai_list.length-1])
+                            }
+                            
+                            if(map[x+1][y]==29||map[x-1][y]==29||map[x][y+1]==29||map[x][y-1]==29){
+                                mutate(ai_list[ai_index])
+                            }
+                            if(map[x+1][y]==30||map[x-1][y]==30||map[x][y+1]==30||map[x][y-1]==30){
+                                for(let i=0;i<30;i++){
+                                    mutate(ai_list[ai_index])
+                                }
+                            }
+
+
+                            //danger handling
+                            if(map[x+1][y]==5||map[x-1][y]==5||map[x][y+1]==5||map[x][y-1]==5||map[x+1][y]==9||map[x-1][y]==9||map[x][y+1]==9||map[x][y-1]==9){
+                                cp[x][y]=0
+                            }
+
+
+
+
+
+                            
+                            //gathering input
+
+                            let input_layer=[];
+                            
+                            for(let i=-2;i<3;i++){
+                                for(let j=-2;j<3;j++){
+                                    input_layer.push(map[x+j][y+i]!=0)
+                                    input_layer.push(map[x+j][y+i]==28)
+                                    input_layer.push(map[x+j][y+i]==5||map[x+j][y+i]==9)
+                                    input_layer.push(map[x+j][y+i]==7)
+                                }
+                            }
+                            input_layer.push(true)
+                            input_layer.push(false)
+                            
+                            let output=ai(input_layer,ai_list[ai_index])
+                            output=output.slice(output.length-4)
+
+                            let mx=0
+                            let my=0
+                            if(output[0]&&cp[x+1][y]==0){//rldu
+                                cp[x][y]=0
+                                cp[x+1][y]=13
+                                mx+=1
+                            }if(output[1]&&cp[x-1+mx][y]==0){
+                                cp[x+mx][y]=0
+                                cp[x-1+mx][y]=13
+                                mx-=1
+                            }if(output[2]&&cp[x+mx][y+1+my]==0){
+                                cp[x+mx][y+my]=0
+                                cp[x+mx][y+1+my]=13
+                                my+=1
+                            }if(output[3]&&cp[x+mx][y-1+my]==0){
+                                cp[x+mx][y+my]=0
+                                cp[x+mx][y-1+my]=13
+                                my-=1
+                            }
+                            ai_list_cords[ai_index]=(x+mx)+'/'+(y+my)
+                        }
+                        /*
+                        //food particle
+                        if(map[x][y]==28){
+
+                            if(cp[x][y+1]==0){
+                                cp[x][y]=0
+                                cp[x][y+1]=28
+                            }else if(cp[x+1][y+1]==0){
+                                cp[x][y]=0
+                                cp[x+1][y+1]=28
+                            }else if(cp[x-1][y+1]==0){
+                                cp[x][y]=0
+                                cp[x-1][y+1]=28
+                            }
+                        }
+
+                        //mutagen particle
+                        if(map[x][y]==29){
+                            if(cp[x][y-1]==28){
+                                cp[x][y-1]=0
+                                cp[x][y]=30
+                            }
+                        }
+                        //mutafood particle
+                        //if(map[x][y]==30){
+                        //if(map[x+1][y]==13||map[x-1][y]==13||map[x][y+1]==13||map[x][y-1]==13){
+                        //    cp[x][y]=0
+                        //    }
+                        //}
+                        */
+                        }catch(error){
+                            //console.warn(error)
+                        }
+                    }
+                
+                }
+                for (let x = 0; x < hm; x++) {
+                    for (let y = 0; y < hm; y++) {
+                        map[x][y]=cp[x][y]
+                    }
+                }
+
+                
+                draw()
+                
+            }
+            setInterval(tick,1000/60)
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            function test(){
+                for (let x = 0; x < hm; x++) {
+                    for (let y = 0; y < hm; y++) {
+                        if(y==32){
+                            map[x][y]=2
+                        }
+                    }
+                }for (let x = 1; x < hm-1; x++) {
+                    for (let y = 1; y < hm-1; y++) {
+                        if(y<32){
+                            map[x][y]=1
+                        }
+                    }
+                }
+            }
+            function test2(){
+                for (let x = 0; x < hm; x++) {
+                    for (let y = 0; y < hm; y++) {
+                        if(y==32){
+                            map[x][y]=2
+                        }
+                    }
+                }for (let x = 1; x < hm-1; x++) {
+                    for (let y = 1; y < hm-1; y++) {
+                        if(y<32){
+                            map[x][y]=3
+                        }
+                    }
+                }
+            }
+            function save(){
+                document.getElementById('a').innerHTML=map.join(',')
+            }
+            function load(){
+                let temp1=document.getElementById('a').value.split(',')
+                let temp2=Math.sqrt(temp1.length)
+                let temp3=[]
+                let temp4=[]
+                for(let i=0;i<temp1.length;i++){
+                    if(i%temp2==0){
+                    temp3.push(temp4)
+                    temp4=[]
+                }
+                temp4.push(parseInt(temp1[i]))
+                }
+                temp3.push(temp4)
+                temp3.reverse()
+                temp3.pop()
+                temp3.reverse()
+                map=temp3
+            }
+
+
+
+            
+
+
+            //demo
+            //inp=[1,0]
+            //nc=4
+            //c=[
+            //    [[],[0],2],
+            //    [[],[1],3],
+            //    [[],[0,1],4],
+            //    [[0,1],[],5],
+            //]
+
+        </script>
+    </body>
+</html>
+
+
+
+
