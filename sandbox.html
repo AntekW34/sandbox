@@ -43,7 +43,11 @@
         <button onclick="ai_list=[];ai_list_cords=[]">reset ai</button>
         <button onclick="particle=28;">food</button>
         <button onclick="particle=29;">mutagen</button>
+        <button onclick="ai_tick();">ai tick</button>
         <!--<button onclick="particle=30;">mutagen food</button>-->
+        <br>
+        <div id="score"></div>
+        <div id="hscore"></div>
         <script>
             
 
@@ -127,7 +131,9 @@
             ai_list_cords=[]
 
 
-
+            //ai trainer stuff
+            score=0
+            max_score=-1
 
 
 
@@ -503,27 +509,32 @@
                                 continue
                             }
                             //food handling
+                            
                             if(cp[x+1][y]==28){
-                                cp[x+1][y]=13
-                                ai_list.push(structuredClone(ai_list[ai_index]))
-                                ai_list_cords.push((x+1)+'/'+y)
-                                mutate(ai_list[ai_list.length-1])
+                                cp[x+1][y]=0
+                                score+=1
+                                //ai_list.push(structuredClone(ai_list[ai_index]))
+                                //ai_list_cords.push((x+1)+'/'+y)
+                                //mutate(ai_list[ai_list.length-1])
                                 
-                            }else if(cp[x-1][y]==28){
-                                cp[x-1][y]=13
-                                ai_list.push(structuredClone(ai_list[ai_index]))
-                                ai_list_cords.push((x-1)+'/'+y)
-                                mutate(ai_list[ai_list.length-1])
-                            }else if(cp[x][y+1]==28){
-                                cp[x][y+1]=13
-                                ai_list.push(structuredClone(ai_list[ai_index]))
-                                ai_list_cords.push((x)+'/'+(y+1))
-                                mutate(ai_list[ai_list.length-1])
-                            }else if(cp[x][y-1]==28){
-                                cp[x][y-1]=13
-                                ai_list.push(structuredClone(ai_list[ai_index]))
-                                ai_list_cords.push((x)+'/'+(y-1))
-                                mutate(ai_list[ai_list.length-1])
+                            }if(cp[x-1][y]==28){
+                                cp[x-1][y]=0
+                                score+=1
+                                //ai_list.push(structuredClone(ai_list[ai_index]))
+                                //ai_list_cords.push((x-1)+'/'+y)
+                                //mutate(ai_list[ai_list.length-1])
+                            }if(cp[x][y+1]==28){
+                                cp[x][y+1]=0
+                                score+=1
+                                //ai_list.push(structuredClone(ai_list[ai_index]))
+                                //ai_list_cords.push((x)+'/'+(y+1))
+                                //mutate(ai_list[ai_list.length-1])
+                            }if(cp[x][y-1]==28){
+                                cp[x][y-1]=0
+                                score+=1
+                                //ai_list.push(structuredClone(ai_list[ai_index]))
+                                //ai_list_cords.push((x)+'/'+(y-1))
+                                //mutate(ai_list[ai_list.length-1])
                             }
                             
                             if(map[x+1][y]==29||map[x-1][y]==29||map[x][y+1]==29||map[x][y-1]==29){
@@ -629,7 +640,8 @@
 
                 
                 draw()
-                
+                document.getElementById('score').innerHTML=`score: ${score}`;
+                document.getElementById('hscore').innerHTML=`high-score: ${max_score}`;
             }
             setInterval(tick,1000/60)
 
@@ -706,8 +718,29 @@
                 temp3.reverse()
                 map=temp3
             }
+            function ai_setup(){
+                save()
+                max_ai_c=ai_list_cords[0]
+                ai_list=[]
+                ai_list_cords=[]
+                max_score=-1
+                score=0
+            }
+            function ai_tick(){
+                load()
+                if(score>=max_score){
+                    max_score=score
+                    max_ai=structuredClone(ai_list[0])
+                    
+                    
+                }
+                ai_list=[structuredClone(max_ai)]
+                    
+                ai_list_cords=[max_ai_c]
+                mutate(ai_list[0])
+                score=0
 
-
+            }
 
             
 
